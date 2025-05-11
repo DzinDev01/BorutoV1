@@ -1,13 +1,13 @@
 {
   "name": "otsuwaborutov1.0.0",
   "version": "1.0.0",
-  "main": "start.js", 
+  "main": "index.js", 
   "type": "commonjs",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "start": "node start.js"
+    "start": "node index.js"
   },
   "author": "raja",
   "license": "ISC",
