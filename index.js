@@ -135,7 +135,7 @@ async function startRaja() {
  raja.ev.on('connection.update', (update) => {
     const { connection, lastDisconnect } = update 
     if (connection === 'close') {
-      rajaStart()
+      startRaja()
     } else if (connection === 'open') {
       console.log(`Berhasil terhubung`)
     }
