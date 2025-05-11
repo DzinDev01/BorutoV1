@@ -37,27 +37,6 @@ const database = new DataBase(global.tempatDB)
 const msgRetryCounterCache = new NodeCache() 
 const groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false }) 
 
-app.get('/', (req, res) => {
-  if (process.send) {
-    process.send('uptime') 
-    process.once('message', (uptime) => {
-      res.json({ 
-        bot_name: packageInfo.name,
-				version: packageInfo.version,
-				author: packageInfo.author,
-				description: packageInfo.description,
-				uptime: `${Math.floor(uptime)} seconds`
-      })
-    })
-  } else {
-    res.json({ error: 'Proses tidak berjalan dengan IPC' })
-  }
-}) 
-
-server.listen(PORT, () => {
-  console.log('Aplikasi di dengarkan oleh port', PORT)
-}) 
-
 //constanta group & function 
 const { groupCacheUpdate, groupParticipantUpdate, messagesUpsert, solving } = require("./lib/message") 
 const { isUrl, generateMessageTag, getBuffer, getSizeMedia, fetchJson, sleep } = require("./lib/function") 
@@ -131,9 +110,7 @@ async function startRaja() {
   await solving(raja, store) 
   raja.ev.on('creds.update', saveCreds) 
   
-  raja.ev.on('connection.update', async (update) => {
-    const { qr, connection, lastDisconnect, isNewLogin, receivedPendingNotifications } = update 
-    if ((connection == 'connecting' || !!qr) && pairingCode && !raja.authState.creds.registered && !pairingStarted) {
+  if (pairingCode && !raja.authState.creds.registered && !pairingStarted) {
       pairingStarted = true 
       let phoneNumber 
       async function getPhoneNumber() {
@@ -154,54 +131,15 @@ async function startRaja() {
         console.log(`Kode pairing kamu : ${code}`)
       }, 3000)
     } 
-    if (connection == 'close') {
-      const reason = new Boom(lastDisconnect?.error)?.output.statusCode 
-      if (reason === DisconnectReason.connectionLost) {
-				console.log('Connection to Server Lost, Attempting to Reconnect...') 
-				startRaja()
-    } else if (reason === DisconnectReason.restartRequired) {
-      console.log('Restart Required...') 
-      startRaja()
-    } else if (reason === DisconnectReason.timedOut) {
-      console.log('Connection Timed Out, Attempting to Reconnect...') 
-      startRaja()
-    } else if (reason === DisconnectReason.badSession) {
-      console.log('Delete Session and Scan again...') 
-      startRaja()
-    } else if (reason === DisconnectReason.connectionReplaced) {
-      console.log('Close current Session first...') 
-    } else if (reason === DisconnectReason.loggedOut) {
-      console.log('Scan again and Run...') 
-      exec('rm -rf ./session/*') 
-      process.exit(1)
-    } else if (reason === DisconnectReason.forbidden) {
-      console.log('Connection Failure, Scan again and Run...') 
-      exec('rm -rf ./session/*') 
-      process.exit(1)
-    } else if (reason === DisconnectReason.multideviceMismatch) {
-      console.log('Scan again...') 
-      exec('rm -rf ./session/*') 
-      process.exit(0)
-    } else {
-      raja.end(`Unknown DisconnectReason : ${reason}|${connection}`)
+    
+ raja.ev.on('connection.update', (update) => {
+    const { connection, lastDisconnect } = update 
+    if (connection === 'close') {
+      rajaStart()
+    } else if (connection === 'open') {
+      console.log(`Berhasil terhubung`)
     }
-  } 
-  if (connection == 'open') {
-    console.log('Terhubung to : ' + JSON.stringify(raja.user, null, 2))
-  } 
-  if (qr) {
-    app.use('/qr', async (req, res) => { 
-      res.setHeader('content-type', 
-      'image/png') 
-      res.end(await toBuffer(qr)) 
-    })
-  } 
-  if (isNewLogin) console.log(chalk.green('Device baru terdeteksi')) 
-  if (receivedPendingNotifications == 'true') {
-    console.log('Tolong tunggu 1 menit') 
-    raja.ev.flush()
-  }
- }) 
+  }) 
  
  raja.ev.on('contacts.update', (update) => {
 		for (let contact of update) {
